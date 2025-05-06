@@ -15,7 +15,7 @@ Script používá Python 3.x a několik knihoven (Balíček kódu, který obsahu
 - D = Číslo zbrojáku, které mám zadané v loslex profilu (Zjistím zde https://www.loslex.cz/profile)
 - E = Zde zadám začátek registrace
 - F = Register now - Pokud jsou registrace už otevřené, můžu se přihlásit hned
-- G = Schedule Registration - Naplánuji registraci **Je kritické nechat počítač i program běžet, dokud registrace neproběhne. Pokud vypnete počítač nebo script, tak nemůže registrace proběhnout**
+- G = Schedule Registration - Naplánuji registraci ***Je kritické nechat počítač i program běžet, dokud registrace neproběhne. Pokud vypnete počítač nebo script, tak nemůže registrace proběhnout***
 - H = Toto je okénko, kem script vypisuje informace. Je to jen log, můžete ignorovat
 
 ![image](https://github.com/user-attachments/assets/68097129-8c01-4455-8734-7ff72f46ef68)
