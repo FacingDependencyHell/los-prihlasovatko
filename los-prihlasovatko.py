@@ -8,6 +8,9 @@ import time
 import threading
 import calendar  # Added for month names
 
+# Debug flag - Set to 1 to only show the request that would be sent, set to 0 to actually send the request
+DEBUGGING = 0
+
 def extract_competition_id(url):
     """Extract competition ID from URL"""
     # Parse the URL and extract the path
@@ -163,26 +166,7 @@ def get_initial_values(url):
         contest_id = contest_id_match.group(1) if contest_id_match else None
         contest_level_id = contest_level_id_match.group(1) if contest_level_id_match else None
         
-        # Get available squads from the HTML
-        available_squads = []
-        squad_pattern = r'<input[^>]*id="squad-(\d+)" type="radio" name="squad"[^>]*>'
-        squad_matches = re.finditer(squad_pattern, content_html)
-        
-        for match in squad_matches:
-            available_squads.append(match.group(1))
-        
-        # Also check for Squad R
-        squad_r_pattern = r'<input[^>]*id="squad-r" type="radio" name="squad" value="(\d+)"[^>]*>'
-        squad_r_match = re.search(squad_r_pattern, content_html)
-        if squad_r_match:
-            available_squads.append("R")
-        
-        # Update squad dropdown based on available squads
-        # If no squads found in the HTML, use the default 12+R squads
-        if available_squads:
-            squad_dropdown['values'] = available_squads
-            squad_dropdown.current(0)  # Select first available squad
-            status_label.config(text=f"Found {len(available_squads)} squads on the page")
+        # REMOVED: Available squads checking functionality
         
         return {
             'session': session,
@@ -338,15 +322,32 @@ def send_registration_request(values, selected_squad, selected_division, url):
     
     session = values['session']
     
-    # Send registration request
-    registration_response = session.post(
-        registration_url, 
-        headers=registration_headers, 
-        data=registration_data,
-        cookies=cookies
-    )
-    
-    return session, registration_response
+    # Check if we're in debug mode
+    if DEBUGGING == 1:
+        # Just display the request that would be sent
+        status_label.config(text="DEBUG MODE: Request not sent")
+        log_message("DEBUG MODE: Request that would be sent:")
+        log_message(f"URL: {registration_url}")
+        log_message(f"Headers: {registration_headers}")
+        log_message(f"Cookies: {cookies}")
+        log_message(f"Data: {registration_data}")
+        
+        # Create a mock response object with status code 200
+        class MockResponse:
+            def __init__(self):
+                self.status_code = 200
+                
+        return session, MockResponse()
+    else:
+        # Actually send the registration request
+        registration_response = session.post(
+            registration_url, 
+            headers=registration_headers, 
+            data=registration_data,
+            cookies=cookies
+        )
+        
+        return session, registration_response
 
 def attempt_registration_with_retries():
     """Attempt registration with multiple retries"""
@@ -376,8 +377,12 @@ def attempt_registration_with_retries():
         session, response = send_registration_request(values, selected_squad, selected_division, url)
         
         if response.status_code == 200 or response.status_code == 302:
-            # Check if registration was successful
-            if verify_registration(session, url, name_entry.get(), selected_squad):
+            # If in debug mode, show success message but don't verify
+            if DEBUGGING == 1:
+                messagebox.showinfo("Debug Success", f"Registration would be successful (debug mode)")
+                return True
+            # In normal mode, check if registration was successful
+            elif verify_registration(session, url, name_entry.get(), selected_squad):
                 messagebox.showinfo("Success", f"Registration successful on attempt {attempt}!")
                 return True
             else:
@@ -396,7 +401,10 @@ def attempt_registration_with_retries():
         session, response = send_registration_request(values, selected_squad, selected_division, url)
         
         if response.status_code == 200 or response.status_code == 302:
-            if verify_registration(session, url, name_entry.get(), selected_squad):
+            if DEBUGGING == 1:
+                messagebox.showinfo("Debug Success", f"Registration would be successful (debug mode)")
+                return True
+            elif verify_registration(session, url, name_entry.get(), selected_squad):
                 messagebox.showinfo("Success", f"Registration successful on attempt {attempt}!")
                 return True
             else:
@@ -415,7 +423,10 @@ def attempt_registration_with_retries():
     session, response = send_registration_request(values, selected_squad, selected_division, url)
     
     if response.status_code == 200 or response.status_code == 302:
-        if verify_registration(session, url, name_entry.get(), selected_squad):
+        if DEBUGGING == 1:
+            messagebox.showinfo("Debug Success", f"Registration would be successful (debug mode)")
+            return True
+        elif verify_registration(session, url, name_entry.get(), selected_squad):
             messagebox.showinfo("Success", "Registration successful on final attempt!")
             return True
         else:
@@ -550,6 +561,14 @@ main_frame.pack(fill=tk.BOTH, expand=True)
 title_label = ttk.Label(main_frame, text="LOS Competition Registration", font=("Helvetica", 16, "bold"))
 title_label.grid(row=0, column=0, columnspan=2, pady=(0, 20))
 
+# Debug Mode Indicator
+debug_frame = ttk.Frame(main_frame)
+debug_frame.grid(row=0, column=2, sticky=tk.E)
+debug_label = ttk.Label(debug_frame, text=f"Debug Mode: {'ON' if DEBUGGING == 1 else 'OFF'}", 
+                        font=("Helvetica", 10, "bold"), 
+                        foreground="red" if DEBUGGING == 1 else "green")
+debug_label.pack()
+
 # URL Entry
 url_label = ttk.Label(main_frame, text="Competition URL:")
 url_label.grid(row=1, column=0, sticky=tk.W, pady=5)
@@ -623,7 +642,7 @@ note_label.grid(row=3, column=0, sticky=tk.W, pady=5)
 note_entry = ttk.Entry(reg_frame, width=40)
 note_entry.grid(row=3, column=1, sticky=tk.W)
 
-# Scheduling Frame - MODIFIED SECTION
+# Scheduling Frame
 schedule_frame = ttk.LabelFrame(main_frame, text="Schedule Registration", padding="10")
 schedule_frame.grid(row=5, column=0, columnspan=2, pady=10, sticky=tk.W+tk.E)
 
@@ -706,6 +725,7 @@ log_text.configure(state=tk.DISABLED)
 
 # Initial log message
 log_message("Application started. Ready for registration.")
+log_message(f"Debug mode is {'ON' if DEBUGGING == 1 else 'OFF'}. {'Request will only be shown, not sent.' if DEBUGGING == 1 else 'Request will be sent.'}")
 
 # Start the GUI
 root.mainloop()
